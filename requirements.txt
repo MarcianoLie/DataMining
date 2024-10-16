@@ -2,3 +2,5 @@ streamlit
 numpy
 matplotlib
 scikit-learn
+os
+time
