@@ -1,5 +1,4 @@
+streamlit
 numpy
-random
-PIL
 matplotlib
 sklearn
