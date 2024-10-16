@@ -4,6 +4,7 @@ import random
 from PIL import Image
 import matplotlib.pyplot as plt
 from sklearn.metrics import silhouette_score
+import time
 
 # Function to resize image to a specific size
 def resize_image(image, target_size=(256, 256)):
@@ -52,7 +53,7 @@ def kmeans_clustering(data, k, max_iters=100):
     return clusters, centroids
 
 # Perform clustering on a new image using already trained centroids
-def cluster_new_image_with_trained_model(img, centroids, resize_to=(256, 256)):
+def cluster_image_with_trained_model(img, centroids, resize_to=(256, 256)):
     img = resize_image(img, target_size=resize_to)  # Resize the image
     img = img.convert('RGB')  # Ensure it's RGB
     img_data = np.array(img)  # Convert image to NumPy array
@@ -69,39 +70,73 @@ def cluster_new_image_with_trained_model(img, centroids, resize_to=(256, 256)):
         cluster_idx = clusters[i]
         clustered_image[i // w, i % w] = (centroids[cluster_idx] * 255).astype(np.uint8)  # Scale back to [0, 255]
     
-    return img, clustered_image
+    return clustered_image
+
+# Function to calculate silhouette score
+def calculate_silhouette_score(data, clusters):
+    return silhouette_score(data, clusters)
+
+# Main function to train a K-Means model on the dataset and apply it to new images
+def train_and_cluster_images(images, k):
+    all_flattened_pixels = []
+
+    # Resize images, extract features, and prepare data
+    for image in images:
+        img = resize_image(image, target_size=(256, 256))  # Resize the image
+        img = img.convert('RGB')  # Ensure it's RGB
+        img_data = np.array(img)
+        img_data = normalize_pixels(img_data)  # Normalize pixel values to [0, 1]
+        h, w, _ = img_data.shape  # Ensure the image has 3 channels (RGB)
+
+        flattened_pixels = img_data.reshape(h * w, 3)  # Flatten image pixels into (N, 3)
+        all_flattened_pixels.append(flattened_pixels)
+
+    data = np.vstack(all_flattened_pixels)  # Combine all flattened pixel data for training
+    
+    # Train K-Means on the entire dataset
+    clusters, centroids = kmeans_clustering(data, k)
+
+    return clusters, centroids, data
 
 # Streamlit app
 def main():
     st.title("Image Clustering with K-Means")
 
-    # Upload image
-    uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
+    # Upload images
+    uploaded_files = st.file_uploader("Choose images...", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
     
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
-        
+    if uploaded_files:
         # Select number of clusters
-        k = st.slider("Select number of clusters", min_value=2, max_value=5, value=4)
+        k = st.slider("Select number of clusters", min_value=2, max_value=5, value=3)
 
-        # Process the image
-        if st.button("Cluster Image"):
+        # Load images
+        images = [Image.open(uploaded_file) for uploaded_file in uploaded_files]
+
+        # Display original images
+        st.subheader("Original Images")
+        for image in images:
+            st.image(image, caption="Original Image", use_column_width=True)
+
+        # Process all uploaded images together
+        if st.button("Cluster Images"):
             st.write("Clustering in progress...")
-            
-            # Resizing and preparing image data
-            img_data = np.array(resize_image(image, target_size=(256, 256)))
-            img_data = normalize_pixels(img_data)
-            h, w, _ = img_data.shape
-            flattened_pixels = img_data.reshape(h * w, 3)
-            
-            # Train K-Means
-            clusters, centroids = kmeans_clustering(flattened_pixels, k)
-            
-            # Apply clustering to the image
-            _, clustered_image = cluster_new_image_with_trained_model(image, centroids, resize_to=(256, 256))
-            
-            # Display clustered image
-            st.image(clustered_image, caption=f"Clustered Image with {k} clusters", use_column_width=True)
 
-main()
+            # Train K-Means and get clustered images
+            clusters, centroids, data = train_and_cluster_images(images, k)
+
+            # Display clustered images
+            clustered_images = []
+            for image in images:
+                clustered_image = cluster_image_with_trained_model(image, centroids, resize_to=(256, 256))
+                clustered_images.append(clustered_image)
+                st.image(clustered_image, caption="Clustered Image", use_column_width=True)
+
+            # Calculate silhouette score with loading indicator
+            with st.spinner("Calculating Silhouette Score..."):
+                silhouette_avg = calculate_silhouette_score(data, clusters)
+
+            # Display silhouette score
+            st.write(f"Silhouette Score for the clustered images: {silhouette_avg:.2f}")
+
+if __name__ == "__main__":
+    main()
