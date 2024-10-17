@@ -72,9 +72,27 @@ def cluster_image_with_trained_model(img, centroids, resize_to=(256, 256)):
     
     return clustered_image
 
-# Function to calculate silhouette score
-def calculate_silhouette_score(data, clusters):
-    return silhouette_score(data, clusters)
+# Function to calculate silhouette score with 10% data sampling for faster calculation
+def calculate_silhouette_score_fast(data, clusters, sample_ratio=0.1):
+    sample_size = int(sample_ratio * len(data))  # Take 10% of the data for faster calculation
+    sample_indices = random.sample(range(len(data)), sample_size)
+    sampled_data = data[sample_indices]
+    sampled_clusters = clusters[sample_indices]
+
+    unique_clusters = np.unique(sampled_clusters)
+    
+    # Only compute silhouette score if more than 1 cluster exists
+    if len(unique_clusters) > 1:
+        silhouette_start_time = time.time()  # Track time for silhouette score calculation
+        silhouette_avg = silhouette_score(sampled_data, sampled_clusters)
+        silhouette_end_time = time.time()  # End time tracking
+        
+        print(f"Silhouette Coefficient for {len(unique_clusters)} clusters: {silhouette_avg}")
+        print(f"Silhouette calculation took {silhouette_end_time - silhouette_start_time:.2f} seconds")
+        return silhouette_avg
+    else:
+        print(f"Cannot calculate Silhouette Score, only {len(unique_clusters)} cluster(s) found.")
+        return None
 
 # Main function to train a K-Means model on the dataset and apply it to new images
 def train_and_cluster_images(images, k):
@@ -131,12 +149,15 @@ def main():
                 clustered_images.append(clustered_image)
                 st.image(clustered_image, caption="Clustered Image", use_column_width=True)
 
-            # Calculate silhouette score with loading indicator
+            # Calculate silhouette score with faster method (10% sampling)
             with st.spinner("Calculating Silhouette Score..."):
-                silhouette_avg = calculate_silhouette_score(data, clusters)
+                silhouette_avg = calculate_silhouette_score_fast(data, clusters)
 
             # Display silhouette score
-            st.write(f"Silhouette Score for the clustered images: {silhouette_avg:.2f}")
+            if silhouette_avg:
+                st.write(f"Silhouette Score for the clustered images: {silhouette_avg:.2f}")
+            else:
+                st.write("Silhouette Score cannot be calculated due to insufficient clusters.")
 
 if __name__ == "__main__":
     main()
