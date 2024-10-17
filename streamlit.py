@@ -6,27 +6,27 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import silhouette_score
 import time
 
-# Function to resize image to a specific size
+# Fungsi untuk mengubah ukuran gambar menjadi ukuran tertentu
 def resize_image(image, target_size=(256, 256)):
     return image.resize(target_size)
 
-# Normalize pixel values to [0, 1]
+# Normalisasi nilai piksel ke [0, 1]
 def normalize_pixels(image_array):
     return image_array / 255.0
 
-# Initialize random centroids for K-Means
+# Inisialisasi centroid acak untuk K-Means
 def initialize_centroids(data, k):
     indices = random.sample(range(len(data)), k)
     centroids = data[indices]
     return centroids
 
-# Assign data points to the nearest centroid
+# Menetapkan data poin ke centroid terdekat
 def assign_clusters(data, centroids):
     distances = np.linalg.norm(data[:, np.newaxis, :] - centroids, axis=2)
     clusters = np.argmin(distances, axis=1)
     return clusters
 
-# Update centroids by calculating the mean of the assigned points
+# Memperbarui centroid dengan menghitung rata-rata poin yang ditetapkan
 def update_centroids(data, clusters, centroids, k):
     new_centroids = []
     for cluster_idx in range(k):
@@ -37,7 +37,7 @@ def update_centroids(data, clusters, centroids, k):
             new_centroids.append(centroids[cluster_idx])
     return np.array(new_centroids)
 
-# K-Means Clustering algorithm
+# Algoritma K-Means Clustering
 def kmeans_clustering(data, k, max_iters=100):
     centroids = initialize_centroids(data, k)
     
@@ -52,112 +52,112 @@ def kmeans_clustering(data, k, max_iters=100):
     
     return clusters, centroids
 
-# Perform clustering on a new image using already trained centroids
+# Melakukan clustering pada gambar baru menggunakan centroid yang sudah dilatih
 def cluster_image_with_trained_model(img, centroids, resize_to=(256, 256)):
-    img = resize_image(img, target_size=resize_to)  # Resize the image
-    img = img.convert('RGB')  # Ensure it's RGB
-    img_data = np.array(img)  # Convert image to NumPy array
+    img = resize_image(img, target_size=resize_to)  # Ubah ukuran gambar
+    img = img.convert('RGB')  # Pastikan gambar dalam format RGB
+    img_data = np.array(img)  # Ubah gambar menjadi array NumPy
     
-    h, w, _ = img_data.shape  # Ensure the image has 3 channels (RGB)
+    h, w, _ = img_data.shape  # Pastikan gambar memiliki 3 channel (RGB)
     
-    flattened_pixels = img_data.reshape(h * w, 3)  # Now (N, 3) shape
-    flattened_pixels = normalize_pixels(flattened_pixels)  # Normalize the pixel values
+    flattened_pixels = img_data.reshape(h * w, 3)  # Sekarang dalam bentuk (N, 3)
+    flattened_pixels = normalize_pixels(flattened_pixels)  # Normalisasi nilai piksel
     
     clusters = assign_clusters(flattened_pixels, centroids)
     
     clustered_image = np.zeros_like(img_data)
     for i in range(h * w):
         cluster_idx = clusters[i]
-        clustered_image[i // w, i % w] = (centroids[cluster_idx] * 255).astype(np.uint8)  # Scale back to [0, 255]
+        clustered_image[i // w, i % w] = (centroids[cluster_idx] * 255).astype(np.uint8)  # Ubah kembali ke skala [0, 255]
     
     return clustered_image
 
-# Function to calculate silhouette score with 10% data sampling for faster calculation
+# Fungsi untuk menghitung nilai silhouette dengan pengambilan sampel data 10% untuk perhitungan lebih cepat
 def calculate_silhouette_score_fast(data, clusters, sample_ratio=0.1):
-    sample_size = int(sample_ratio * len(data))  # Take 10% of the data for faster calculation
+    sample_size = int(sample_ratio * len(data))  # Ambil 10% dari data untuk perhitungan lebih cepat
     sample_indices = random.sample(range(len(data)), sample_size)
     sampled_data = data[sample_indices]
     sampled_clusters = clusters[sample_indices]
 
     unique_clusters = np.unique(sampled_clusters)
     
-    # Only compute silhouette score if more than 1 cluster exists
+    # Hanya hitung nilai silhouette jika terdapat lebih dari 1 cluster
     if len(unique_clusters) > 1:
-        silhouette_start_time = time.time()  # Track time for silhouette score calculation
+        silhouette_start_time = time.time()  # Lacak waktu untuk perhitungan silhouette
         silhouette_avg = silhouette_score(sampled_data, sampled_clusters)
-        silhouette_end_time = time.time()  # End time tracking
+        silhouette_end_time = time.time()  # Akhiri pelacakan waktu
         
-        print(f"Silhouette Coefficient for {len(unique_clusters)} clusters: {silhouette_avg}")
-        print(f"Silhouette calculation took {silhouette_end_time - silhouette_start_time:.2f} seconds")
+        print(f"Koefisien Silhouette untuk {len(unique_clusters)} cluster: {silhouette_avg}")
+        print(f"Perhitungan silhouette memakan waktu {silhouette_end_time - silhouette_start_time:.2f} detik")
         return silhouette_avg
     else:
-        print(f"Cannot calculate Silhouette Score, only {len(unique_clusters)} cluster(s) found.")
+        print(f"Tidak dapat menghitung Skor Silhouette, hanya ditemukan {len(unique_clusters)} cluster.")
         return None
 
-# Main function to train a K-Means model on the dataset and apply it to new images
+# Fungsi utama untuk melatih model K-Means pada dataset dan menerapkannya ke gambar baru
 def train_and_cluster_images(images, k):
     all_flattened_pixels = []
 
-    # Resize images, extract features, and prepare data
+    # Ubah ukuran gambar, ekstrak fitur, dan siapkan data
     for image in images:
-        img = resize_image(image, target_size=(256, 256))  # Resize the image
-        img = img.convert('RGB')  # Ensure it's RGB
+        img = resize_image(image, target_size=(256, 256))  # Ubah ukuran gambar
+        img = img.convert('RGB')  # Pastikan dalam format RGB
         img_data = np.array(img)
-        img_data = normalize_pixels(img_data)  # Normalize pixel values to [0, 1]
-        h, w, _ = img_data.shape  # Ensure the image has 3 channels (RGB)
+        img_data = normalize_pixels(img_data)  # Normalisasi nilai piksel menjadi [0, 1]
+        h, w, _ = img_data.shape  # Pastikan gambar memiliki 3 channel (RGB)
 
-        flattened_pixels = img_data.reshape(h * w, 3)  # Flatten image pixels into (N, 3)
+        flattened_pixels = img_data.reshape(h * w, 3)  # Ubah piksel gambar menjadi bentuk (N, 3)
         all_flattened_pixels.append(flattened_pixels)
 
-    data = np.vstack(all_flattened_pixels)  # Combine all flattened pixel data for training
+    data = np.vstack(all_flattened_pixels)  # Gabungkan semua data piksel yang diubah menjadi satu untuk pelatihan
     
-    # Train K-Means on the entire dataset
+    # Latih K-Means pada seluruh dataset
     clusters, centroids = kmeans_clustering(data, k)
 
     return clusters, centroids, data
 
-# Streamlit app
+# Aplikasi Streamlit
 def main():
-    st.title("Image Clustering with K-Means")
+    st.title("Clustering Gambar dengan K-Means")
 
-    # Upload images
-    uploaded_files = st.file_uploader("Choose images...", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+    # Unggah gambar
+    uploaded_files = st.file_uploader("Pilih gambar...", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
     
     if uploaded_files:
-        # Select number of clusters
-        k = st.slider("Select number of clusters", min_value=2, max_value=5, value=3)
+        # Pilih jumlah cluster
+        k = st.slider("Pilih jumlah cluster", min_value=2, max_value=5, value=3)
 
-        # Load images
+        # Muat gambar
         images = [Image.open(uploaded_file) for uploaded_file in uploaded_files]
 
-        # Display original images
-        st.subheader("Original Images")
+        # Tampilkan gambar asli
+        st.subheader("Gambar Asli")
         for image in images:
-            st.image(image, caption="Original Image", use_column_width=True)
+            st.image(image, caption="Gambar Asli", use_column_width=True)
 
-        # Process all uploaded images together
-        if st.button("Cluster Images"):
-            st.write("Clustering in progress...")
+        # Proses semua gambar yang diunggah bersama
+        if st.button("Cluster Gambar"):
+            st.write("Clustering sedang berlangsung...")
 
-            # Train K-Means and get clustered images
+            # Latih K-Means dan dapatkan gambar yang dikelompokkan
             clusters, centroids, data = train_and_cluster_images(images, k)
 
-            # Display clustered images
+            # Tampilkan gambar yang dikelompokkan
             clustered_images = []
             for image in images:
                 clustered_image = cluster_image_with_trained_model(image, centroids, resize_to=(256, 256))
                 clustered_images.append(clustered_image)
-                st.image(clustered_image, caption="Clustered Image", use_column_width=True)
+                st.image(clustered_image, caption="Gambar Setelah Cluster", use_column_width=True)
 
-            # Calculate silhouette score with faster method (10% sampling)
-            with st.spinner("Calculating Silhouette Score..."):
+            # Hitung nilai silhouette dengan metode lebih cepat (pengambilan sampel 10%)
+            with st.spinner("Menghitung Skor Silhouette..."):
                 silhouette_avg = calculate_silhouette_score_fast(data, clusters)
 
-            # Display silhouette score
+            # Tampilkan skor silhouette
             if silhouette_avg:
-                st.write(f"Silhouette Score for the clustered images: {silhouette_avg:.2f}")
+                st.write(f"Skor Silhouette untuk gambar : {silhouette_avg:.2f}")
             else:
-                st.write("Silhouette Score cannot be calculated due to insufficient clusters.")
+                st.write("Skor Silhouette tidak dapat dihitung karena cluster yang tidak mencukupi.")
 
 if __name__ == "__main__":
     main()
